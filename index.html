@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimal Matching</title>
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+</head>
+<body class="bg-light">
+
+<div class="container mt-5">
+    <h1 class="text-center mb-4">Optimal Matching Calculator</h1>
+    
+    <div id="input-form">
+        <form id="personForm">
+            <div id="person-rows"></div>
+            <div class="text-center">
+                <button type="button" class="btn btn-success mt-3" onclick="addPerson()">Add Person</button>
+                <button type="button" class="btn btn-primary mt-3" onclick="processData()">Process</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="mt-5" id="output"></div>
+</div>
+
+<!-- Bootstrap JS and dependencies -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/9.4.4/math.min.js"></script>
+
+<script>
+    let personCount = 0;
+
+    const options = {
+        Gender: ['Male', 'Female', 'Other'],
+        Vacation: ['Beach', 'Mountains', 'City', 'Adventure'],
+        Pet: ['Dog', 'Cat'],
+        TypeOfDate: ['Cafe', 'Outdoor', 'FineDine'],
+        Movies: ['RomCom', 'Action', 'Documentary'],
+        Weather: ['Summer', 'Winter'],
+        FreeTime: ['Netflix/Chill', 'ExploreActivities', 'Travel'],
+        Music: ['Classical', 'Rock', 'Pop']
+    };
+
+    function addPerson() {
+        personCount++;
+        const personRows = document.getElementById('person-rows');
+
+        if (personCount % 2 !== 0) {
+            const row = document.createElement('div');
+            row.className = "row mb-4";
+            row.id = `person-row-${Math.ceil(personCount / 2)}`;
+            personRows.appendChild(row);
+        }
+
+        const currentRow = document.getElementById(`person-row-${Math.ceil(personCount / 2)}`);
+        
+        const col = document.createElement('div');
+        col.className = "col-md-6";
+
+        col.innerHTML = `
+            <div class="card p-3">
+                <div class="form-group">
+                    <label for="name${personCount}">Name</label>
+                    <input type="text" class="form-control" name="name${personCount}" placeholder="Name">
+                </div>
+                <div class="form-group">
+                    <label for="age${personCount}">Age</label>
+                    <input type="number" class="form-control" name="age${personCount}" placeholder="Age">
+                </div>
+                <div class="form-group">
+                    <label for="gender${personCount}">Gender</label>
+                    <select class="form-control" name="gender${personCount}">
+                        ${options.Gender.map(option => `<option value="${option}">${option}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="vacation${personCount}">Vacation</label>
+                    <select class="form-control" name="vacation${personCount}">
+                        ${options.Vacation.map(option => `<option value="${option}">${option}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="pet${personCount}">Pet</label>
+                    <select class="form-control" name="pet${personCount}">
+                        ${options.Pet.map(option => `<option value="${option}">${option}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="typeOfDate${personCount}">Type of Date</label>
+                    <select class="form-control" name="typeOfDate${personCount}">
+                        ${options.TypeOfDate.map(option => `<option value="${option}">${option}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="movies${personCount}">Movies</label>
+                    <select class="form-control" name="movies${personCount}">
+                        ${options.Movies.map(option => `<option value="${option}">${option}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="weather${personCount}">Weather</label>
+                    <select class="form-control" name="weather${personCount}">
+                        ${options.Weather.map(option => `<option value="${option}">${option}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="freeTime${personCount}">Free Time</label>
+                    <select class="form-control" name="freeTime${personCount}">
+                        ${options.FreeTime.map(option => `<option value="${option}">${option}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="music${personCount}">Music</label>
+                    <select class="form-control" name="music${personCount}">
+                        ${options.Music.map(option => `<option value="${option}">${option}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+        `;
+
+        currentRow.appendChild(col);
+    }
+
+    const weights = {
+        'TypeOfDate': 0.3,
+        'Pet': 0.1,
+        'Movies': 0.2,
+        'Weather': 0.1,
+        'FreeTime': 0.1,
+        'Music': 0.2
+    };
+
+    const scoring_matrices = {
+        'Pet': {
+            'Dog-Cat': 0.5, 'Cat-Dog': 0.5, 'Dog-Dog': 1,
+            'Cat-Cat': 1
+        },
+        'Weather': {
+            'Summer-Winter': 0, 'Winter-Summer': 0, 'Summer-Summer': 1,
+            'Winter-Winter': 1
+        },
+        'TypeOfDate': {
+            'Cafe-Cafe': 1, 'Cafe-Outdoor': 0.25, 'Cafe-FineDine': 0.75,
+            'Outdoor-Outdoor': 1, 'Outdoor-FineDine': 0, 'FineDine-FineDine': 1
+        },
+        'Movies': {
+            'RomCom-RomCom': 1, 'RomCom-Action': 0, 'RomCom-Documentary': 0.25,
+            'Action-Action': 1, 'Action-Documentary': 0.6, 'Documentary-Documentary': 1
+        },
+        'FreeTime': {
+            'Netflix/Chill-Netflix/Chill': 1, 'Netflix/Chill-ExploreActivities': 0, 'Netflix/Chill-Travel': 0,
+            'ExploreActivities-ExploreActivities': 1, 'ExploreActivities-Travel': 0.5, 'Travel-Travel': 1
+        },
+        'Music': {
+            'Classical-Classical': 1, 'Classical-Rock': 0, 'Classical-Pop': 0.25,
+            'Rock-Rock': 1, 'Rock-Pop': 0.5, 'Pop-Pop': 1
+        }
+    };
+
+    function calculateScore(entry1, entry2, weights, scoring_matrices) {
+        let score = 0;
+        for (const attribute in weights) {
+            const weight = weights[attribute];
+            const value1 = entry1[attribute];
+            const value2 = entry2[attribute];
+            const pair = `${value1}-${value2}`;
+            const reverse_pair = `${value2}-${value1}`;
+
+            if (scoring_matrices[attribute][pair] !== undefined) {
+                score += weight * scoring_matrices[attribute][pair];
+            } else if (scoring_matrices[attribute][reverse_pair] !== undefined) {
+                score += weight * scoring_matrices[attribute][reverse_pair];
+            } else {
+                score += weight * 0; // No score for unmatched or undefined pairs
+            }
+        }
+        return score;
+    }
+
+    function processData() {
+        const form = document.getElementById('personForm');
+        const formData = new FormData(form);
+        const data = [];
+
+        for (let i = 1; i <= personCount; i++) {
+            const person = {
+                Name: formData.get(`name${i}`),
+                Age: formData.get(`age${i}`),
+                Gender: formData.get(`gender${i}`),
+                Vacation: formData.get(`vacation${i}`),
+                Pet: formData.get(`pet${i}`),
+                TypeOfDate: formData.get(`typeOfDate${i}`),
+                Movies: formData.get(`movies${i}`),
+                Weather: formData.get(`weather${i}`),
+                FreeTime: formData.get(`freeTime${i}`),
+                Music: formData.get(`music${i}`)
+            };
+            data.push(person);
+        }
+
+        const n = data.length;
+        const score_matrix = [];
+
+        // Initialize the score matrix with zeros
+        for (let i = 0; i < n; i++) {
+            score_matrix[i] = [];
+            for (let j = 0; j < n; j++) {
+                score_matrix[i][j] = 0;
+            }
+        }
+
+        // Compare each entry with every other entry
+        for (let i = 0; i < n; i++) {
+            for (let j = 0; j < n; j++) {
+                if (i !== j) {
+                    score_matrix[i][j] = calculateScore(data[i], data[j], weights, scoring_matrices);
+                }
+            }
+        }
+
+        // Apply the Hungarian algorithm to find the optimal matching
+        const negated_matrix = math.multiply(score_matrix, -1);
+        const { rows, cols } = linearAssignment(negated_matrix);
+
+        let total_max_score = 0;
+        let optimal_matching = [];
+
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const col = cols[i];
+            total_max_score += score_matrix[row][col];
+            optimal_matching.push({
+                'Person i': data[row].Name,
+                'Person j': data[col].Name,
+                'Score': score_matrix[row][col]
+            });
+        }
+
+        // Display the optimal matching and the total maximum score in a table
+        const outputDiv = document.getElementById("output");
+        const table = document.createElement("table");
+        table.className = "table table-striped table-bordered mt-4";
+
+        const headerRow = table.insertRow();
+        const headerCell1 = document.createElement("th");
+        headerCell1.textContent = "Person i";
+        headerRow.appendChild(headerCell1);
+
+        const headerCell2 = document.createElement("th");
+        headerCell2.textContent = "Person j";
+        headerRow.appendChild(headerCell2);
+
+        const headerCell3 = document.createElement("th");
+        headerCell3.textContent = "Score";
+        headerRow.appendChild(headerCell3);
+
+        optimal_matching.forEach(match => {
+            const row = table.insertRow();
+            const cell1 = row.insertCell();
+            cell1.textContent = match['Person i'];
+
+            const cell2 = row.insertCell();
+            cell2.textContent = match['Person j'];
+
+            const cell3 = row.insertCell();
+            cell3.textContent = match['Score'].toFixed(2);
+        });
+
+        outputDiv.innerHTML = "";
+        outputDiv.appendChild(table);
+
+        const totalScoreDiv = document.createElement("div");
+        totalScoreDiv.textContent = `Total Maximum Score: ${total_max_score.toFixed(2)}`;
+        totalScoreDiv.className = "mt-3 font-weight-bold";
+        outputDiv.appendChild(totalScoreDiv);
+    }
+
+    function linearAssignment(costMatrix) {
+        const n = costMatrix.length;
+        const row_idx = Array.from(Array(n).keys());
+        const col_idx = Array.from(Array(n).keys());
+
+        const rows = [];
+        const cols = [];
+
+        while (row_idx.length > 0) {
+            let minVal = Infinity;
+            let minIdx = [-1, -1];
+
+            for (let i = 0; i < row_idx.length; i++) {
+                for (let j = 0; j < col_idx.length; j++) {
+                    const cost = costMatrix[row_idx[i]][col_idx[j]];
+                    if (cost < minVal) {
+                        minVal = cost;
+                        minIdx = [i, j];
+                    }
+                }
+            }
+
+            rows.push(row_idx.splice(minIdx[0], 1)[0]);
+            cols.push(col_idx.splice(minIdx[1], 1)[0]);
+        }
+
+        return { rows, cols };
+    }
+
+    // Automatically add two persons when the page loads
+    document.addEventListener("DOMContentLoaded", function() {
+        addPerson();
+        addPerson();
+    });
+
+</script>
+
+</body>
+</html>
